@@ -18,7 +18,109 @@ end
 
  local get_icon = require("custom.utils").get_icon
 return {
+  {
+  -- RUST LSP
+  "simrat39/rust-tools.nvim",
+  dependencies = "neovim/nvim-lspconfig",
+  config = function()
+    require("rust-tools").setup({
+      -- rust-tools options
+      tools = {
+        autoSetHints = true,
+        inlay_hints = {
+          show_parameter_hints = true,
+          parameter_hints_prefix = "<- ",
+          other_hints_prefix = "=> "
+        }
+      },
+      -- all the opts to send to nvim-lspconfig
+      -- these override the defaults set by rust-tools.nvim
+      --
+      -- REFERENCE:
+      -- https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/generated_config.adoc
+      -- https://rust-analyzer.github.io/manual.html#configuration
+      -- https://rust-analyzer.github.io/manual.html#features
+      --
+      -- NOTE: The configuration format is `rust-analyzer.<section>.<property>`.
+      --       <section> should be an object.
+      --       <property> should be a primitive.
+      server = {
+        on_attach = function(client, bufnr)
+          require("shared/lsp")(client, bufnr)
+          require("illuminate").on_attach(client)
+
+          local bufopts = {
+            noremap = true,
+            silent = true,
+            buffer = bufnr
+          }
+          vim.keymap.set('n', '<leader><leader>rr',
+            "<Cmd>RustRunnables<CR>", bufopts)
+          vim.keymap.set('n', 'K', "<Cmd>RustHoverActions<CR>",
+            bufopts)
+        end,
+        ["rust-analyzer"] = {
+          assist = {
+            importEnforceGranularity = true,
+            importPrefix = "create"
+          },
+          cargo = { allFeatures = true },
+          checkOnSave = {
+            -- default: `cargo check`
+            command = "clippy",
+            allFeatures = true
+          }
+        },
+        inlayHints = {
+            auto=true,
+            only_current_line = false,
+            show_parameter_hints = true,
+            highlight = "Comment",
+          -- NOT SURE THIS IS VALID/WORKS 😬
+          lifetimeElisionHints = {
+            enable = true,
+            useParameterNames = true
+          }
+        }
+      }
+    })
+  end
+},
   {'rcarriga/nvim-notify',opts = { stages = "fade" }},
+  { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
+
+  {
+  "folke/tokyonight.nvim",
+  lazy = false,
+  priority = 1000,
+  opts = {},
+},  {
+    "onsails/lspkind.nvim",
+    opts = {
+      mode = "symbol",
+      symbol_map = {
+        Array = "󰅪",
+        Boolean = "⊨",
+        Class = "󰌗",
+        Constructor = "",
+        Key = "󰌆",
+        Namespace = "󰅪",
+        Null = "NULL",
+        Number = "#",
+        Object = "󰀚",
+        Package = "󰏗",
+        Property = "",
+        Reference = "",
+        Snippet = "",
+        String = "󰀬",
+        TypeParameter = "󰊄",
+        Unit = "",
+      },
+      menu = {},
+    },
+    enabled = vim.g.icons_enabled,
+    config = require "custom.plugins.configs.lspkind",
+  },
   {
     "folke/todo-comments.nvim",
     dependencies={"nvim-lua/plenary.nvim"},
@@ -159,7 +261,7 @@ opts = {
     },
   },
   commands = {
-    system_open = function(state) require("astronvim.utils").system_open(state.tree:get_node():get_id()) end,
+    system_open = function(state) system_open(state.tree:get_node():get_id()) end,
     parent_or_close = function(state)
       local node = state.tree:get_node()
       if (node.type == "directory" or node:has_children()) and node:is_expanded() then
